@@ -4,10 +4,11 @@ use.miden::output_note
 # CONSTANTS
 # =================================================================================================
 const.PUBLIC_NOTE=1
+const.ADDR = 0x0004
 
 #! Adds the provided asset to the active account.
 #!
-#! Inputs:  [ASSET, pad(12)]
+#! Inputs:  [ASSET, DATA0, DATA1, DATA2]
 #! Outputs: [pad(16)]
 #!
 #! Where:
@@ -21,12 +22,37 @@ const.PUBLIC_NOTE=1
 #! Invocation: call
 export.receive_asset
     exec.native_account::add_asset
-    # => [ASSET', pad(12)]
+    # => [ASSET', reserve, reserve_with_slippage, liabilities, 0, pad(8)]
 
-    # drop the final asset
-    dropw
+    procref.validate_and_update_state mem_storew_be.ADDR dropw push.ADDR
+    dynexec
+
     # => [pad(16)]
 end
+
+#! 'Virtual' procedure to validate and update the state of the account.
+#!
+#! Inputs:  [ASSET', DATA0, DATA1, DATA2]
+#! Outputs: [ASSET', pad(12)]
+#!
+#! Where:
+#! - ASSET is the asset to be received, can be fungible or non-fungible
+#!
+#! Panics if:
+#! - the same non-fungible asset already exists in the account.
+#! - adding a fungible asset would result in amount overflow, i.e.,
+#!   the total amount would be greater than 2^63.
+#!
+#! Invocation: call
+proc.validate_and_update_state
+   swap.3
+   dropw dropw dropw
+   push.0.0.0.0
+   push.0.0.0.0
+   push.0.0.0.0
+   swap.3
+end
+
 
 #! Removes the specified asset from the account and adds it to the output note with the specified
 #! index.
